@@ -44,7 +44,7 @@ type InstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 };
 
-const VERSION = 'v0.8.2';
+const VERSION = 'v0.8.3';
 const DAY_SECONDS = 180;
 const DAY_START_MINUTES = 6 * 60;
 const DAY_END_MINUTES = 22 * 60 + 30;
