@@ -402,7 +402,9 @@ export default function Home() {
     ? { src: './father-stable-v3.png?v=0.8.1', single: true }
     : dadState.state === 'exhausted'
       ? { src: './father-exhausted-v3.png?v=0.8.1', single: true }
-      : { src: './father-states-v2.png?v=0.8.1', single: false };
+      : dadState.state === 'collapsed'
+        ? { src: './father-collapsed-v3.png?v=0.8.1', single: true }
+        : { src: './father-states-v2.png?v=0.8.1', single: false };
   const ending = endingFor(meaning, stats, endReason);
   const lossNotice = crashReason ? lossNoticeFor(crashReason, stats) : null;
 

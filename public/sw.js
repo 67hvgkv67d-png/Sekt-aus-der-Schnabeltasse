@@ -7,6 +7,7 @@ const CORE_ASSETS = [
   `${BASE_PATH}father-states-v2.png`,
   `${BASE_PATH}father-stable-v3.png`,
   `${BASE_PATH}father-exhausted-v3.png`,
+  `${BASE_PATH}father-collapsed-v3.png`,
   `${BASE_PATH}app-icon-192.png`,
   `${BASE_PATH}app-icon-512.png`,
 ];

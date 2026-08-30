@@ -168,7 +168,7 @@ button:focus-visible { outline: 3px solid #fff4b8; outline-offset: 3px; }
 .dad-sprite img.dad-single { inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .dad-sprite img.dad-sheet { width: 200%; height: 200%; object-fit: fill; }
 .dad-unwell .dad-sprite img.dad-sheet { left: 0; top: -100%; }
-.dad-collapsed .dad-sprite img.dad-sheet { left: -100%; top: -100%; }
+.dad-collapsed .dad-sprite { aspect-ratio: 229 / 145; }
 .dad-state figcaption {
   position: absolute;
   left: 50%;
@@ -539,7 +539,7 @@ kbd { padding: 4px 7px; color: #f7d98d; background: #050b0a; border: 1px solid #
   .dad-stable .dad-sprite { animation: dad-breathe 2.8s ease-in-out infinite; }
   .dad-exhausted .dad-sprite { animation: dad-sway 1.8s ease-in-out infinite; transform-origin: 50% 100%; }
   .dad-unwell .dad-sprite { animation: dad-unwell 2.1s ease-in-out infinite; transform-origin: 50% 100%; }
-  .dad-collapsed .dad-sprite { animation: dad-tremor 1.7s steps(2, end) infinite; }
+  .dad-collapsed .dad-sprite { animation: dad-tremor 1.7s steps(2, end) infinite; transform-origin: 50% 100%; }
   @keyframes dad-breathe { 50% { transform: translateY(-2px); } }
   @keyframes dad-sway { 33% { transform: rotate(-1.5deg); } 66% { transform: rotate(1.5deg); } }
   @keyframes dad-unwell { 50% { transform: translateY(2px) rotate(-1deg); } }
