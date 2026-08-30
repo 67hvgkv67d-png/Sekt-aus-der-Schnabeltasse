@@ -106,7 +106,7 @@ const ACTIONS: Action[] = [
     log: 'Fenja hat draußen gemacht. Amtlich: ein ziemliches Feini.',
   },
   {
-    id: 'kinder', key: '6', icon: '💰', label: 'Kinderjob', position: 'pos-kids', cooldown: 11,
+    id: 'kinder', key: '6', icon: '🎁→💰', label: 'Kinderjob', position: 'pos-kids', cooldown: 11,
     description: '+50 € Beitrag · Risiko', effects: { geld: 50, familie: -2, haushalt: 5, sinn: 2 },
     log: 'Pfandflaschen-Startup gegründet. Noch kein Unicorn, aber 50 Euro Umsatz.',
   },
