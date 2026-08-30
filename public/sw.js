@@ -1,10 +1,12 @@
-const CACHE_NAME = 'schnabeltasse-v5';
+const CACHE_NAME = 'schnabeltasse-v6';
 const BASE_PATH = new URL('./', self.location.href).pathname;
 const CORE_ASSETS = [
   BASE_PATH,
   `${BASE_PATH}manifest.webmanifest`,
   `${BASE_PATH}family-home-v3.png`,
   `${BASE_PATH}father-states-v2.png`,
+  `${BASE_PATH}father-stable-v3.png`,
+  `${BASE_PATH}father-exhausted-v3.png`,
   `${BASE_PATH}app-icon-192.png`,
   `${BASE_PATH}app-icon-512.png`,
 ];

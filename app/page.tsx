@@ -44,7 +44,7 @@ type InstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 };
 
-const VERSION = 'v0.7.0';
+const VERSION = 'v0.8.0';
 const SHIFT_SECONDS = 180;
 const ENERGY_REGEN_DELAY = 5000;
 const ENERGY_REGEN_PER_SECOND = 1.25;
@@ -384,6 +384,11 @@ export default function Home() {
   const dogRank = getDogRank(stats.hund);
   const lifeRank = getLifeRank(stats);
   const dadState = getDadState(stats);
+  const dadSprite = dadState.state === 'stable'
+    ? { src: './father-stable-v3.png?v=0.8.0', single: true }
+    : dadState.state === 'exhausted'
+      ? { src: './father-exhausted-v3.png?v=0.8.0', single: true }
+      : { src: './father-states-v2.png?v=0.8.0', single: false };
   const ending = endingFor(meaning, stats, endReason);
   const lossNotice = crashReason ? lossNoticeFor(crashReason, stats) : null;
 
@@ -677,7 +682,7 @@ export default function Home() {
           <div className="scene-shade" />
           {phase === 'playing' && (
             <figure className={`dad-state dad-${dadState.state}`} aria-label={dadState.label}>
-              <span className="dad-sprite"><img src="./father-states-v2.png?v=0.7.0" alt="" /></span>
+              <span className="dad-sprite"><img className={dadSprite.single ? 'dad-single' : 'dad-sheet'} src={dadSprite.src} alt="" /></span>
               <figcaption>{dadState.label}</figcaption>
             </figure>
           )}
@@ -743,7 +748,7 @@ export default function Home() {
 
         {phase === 'intro' && (
           <section className="intro-panel">
-            <span className="intro-kicker">EINE GANZ NORMALE FAMILIE. LEIDER.</span>
+            <span className="intro-kicker">SEKT AUS DER SCHNABELTASSE</span>
             <h1>Ergibt das hier<br /><em>Sinn?</em></h1>
             <p>
               Drei Kinder, ein Hund, Die Frau kostet 1.000 Geld pro Minute, ein Gravel Bike, ein Elektroauto,

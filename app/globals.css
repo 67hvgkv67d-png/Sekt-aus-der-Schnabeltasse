@@ -157,11 +157,11 @@ button:focus-visible { outline: 3px solid #fff4b8; outline-offset: 3px; }
   filter: drop-shadow(7px 8px 0 #020504aa);
 }
 .dad-sprite { position: relative; display: block; width: 100%; aspect-ratio: 1; overflow: hidden; }
-.dad-sprite img { position: absolute; width: 200%; max-width: none; height: 200%; object-fit: fill; image-rendering: pixelated; }
-.dad-stable .dad-sprite img { left: 0; top: 0; }
-.dad-exhausted .dad-sprite img { left: -100%; top: 0; }
-.dad-unwell .dad-sprite img { left: 0; top: -100%; }
-.dad-collapsed .dad-sprite img { left: -100%; top: -100%; }
+.dad-sprite img { position: absolute; max-width: none; image-rendering: pixelated; }
+.dad-sprite img.dad-single { inset: 0; width: 100%; height: 100%; object-fit: contain; }
+.dad-sprite img.dad-sheet { width: 200%; height: 200%; object-fit: fill; }
+.dad-unwell .dad-sprite img.dad-sheet { left: 0; top: -100%; }
+.dad-collapsed .dad-sprite img.dad-sheet { left: -100%; top: -100%; }
 .dad-state figcaption {
   position: absolute;
   left: 50%;
@@ -319,8 +319,8 @@ kbd { padding: 4px 7px; color: #f7d98d; background: #050b0a; border: 1px solid #
   .hotspot-copy small { font-size: 10px; }
 
   .dad-state {
-    bottom: 48px;
-    width: clamp(300px, 22vw, 520px);
+    bottom: clamp(45px, 8vh, 125px);
+    width: clamp(380px, 36vw, 920px);
     filter: drop-shadow(10px 12px 0 #020504aa);
   }
   .dad-state figcaption {
@@ -414,11 +414,11 @@ kbd { padding: 4px 7px; color: #f7d98d; background: #050b0a; border: 1px solid #
 
   .dad-state {
     top: auto;
-    bottom: 2px;
+    bottom: 5%;
     width: min(190px, 46vw);
     filter: drop-shadow(4px 5px 0 #020504aa);
   }
-  .dad-state figcaption { bottom: 0; padding: 3px 5px; font-size: 6.5px; }
+  .dad-state figcaption { bottom: -4px; padding: 3px 5px; font-size: 6.5px; }
 
   .hotspots {
     position: absolute;
@@ -517,7 +517,7 @@ kbd { padding: 4px 7px; color: #f7d98d; background: #050b0a; border: 1px solid #
   .phase-playing .scene-window { top: 142px; bottom: 158px; }
   .hotspots { height: 111px; }
   .log-panel { bottom: 122px; height: 36px; }
-  .dad-state { top: auto; bottom: 0; width: clamp(126px, 40vw, 150px); }
+  .dad-state { top: auto; bottom: 3%; width: clamp(132px, 42vw, 158px); }
   .hotspot { grid-template-columns: 1fr; place-items: center; }
   .hotspot-icon { width: 34px; height: 30px; font-size: 21px; background: transparent; }
   .hotspot-copy { display: none !important; }
