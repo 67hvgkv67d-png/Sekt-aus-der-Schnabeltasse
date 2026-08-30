@@ -44,7 +44,7 @@ type InstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 };
 
-const VERSION = 'v0.6.0';
+const VERSION = 'v0.7.0';
 const SHIFT_SECONDS = 180;
 const ENERGY_REGEN_DELAY = 5000;
 const ENERGY_REGEN_PER_SECOND = 1.25;
@@ -484,7 +484,7 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (musicRef.current) musicRef.current.volume = .32;
+    if (musicRef.current) musicRef.current.volume = .18;
     if (phase === 'playing' && sound && !paused) void musicRef.current?.play().catch(() => undefined);
     else musicRef.current?.pause();
   }, [phase, sound, paused, trackIndex]);
@@ -677,7 +677,7 @@ export default function Home() {
           <div className="scene-shade" />
           {phase === 'playing' && (
             <figure className={`dad-state dad-${dadState.state}`} aria-label={dadState.label}>
-              <span className="dad-sprite"><img src="./father-states.png?v=0.6.0" alt="" /></span>
+              <span className="dad-sprite"><img src="./father-states-v2.png?v=0.7.0" alt="" /></span>
               <figcaption>{dadState.label}</figcaption>
             </figure>
           )}

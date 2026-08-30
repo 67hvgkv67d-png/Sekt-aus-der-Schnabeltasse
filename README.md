@@ -8,7 +8,7 @@ Ein humorvolles Familien-Survival-Spiel im Stil klassischer Pixel-Art-Adventures
 
 Halte drei Minuten lang Sinn, Gesundheit, Familie, Geld, Haushalt und Fenjas Feini-Index zusammen. Kümmere dich um die unterschiedlichen Bedürfnisse der drei Kinder, geh mit Fenja raus, rette den Controller, grille mit Markus und verkrafte, dass der eigene Zwillingsbruder Professor ist.
 
-Aktuelle Spielversion: **v0.6.0**
+Aktuelle Spielversion: **v0.7.0**
 
 ## Spielen
 
