@@ -44,7 +44,7 @@ type InstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 };
 
-const VERSION = 'v0.8.1';
+const VERSION = 'v0.8.2';
 const SHIFT_SECONDS = 180;
 const ENERGY_REGEN_DELAY = 5000;
 const ENERGY_REGEN_PER_SECOND = 1.25;
@@ -399,13 +399,14 @@ export default function Home() {
   const lifeRank = getLifeRank(stats);
   const dadState = getDadState(stats);
   const dadSprite = dadState.state === 'stable'
-    ? { src: './father-stable-v3.png?v=0.8.1', single: true }
+    ? { src: './father-stable-v3.png?v=0.8.2', single: true }
     : dadState.state === 'exhausted'
-      ? { src: './father-exhausted-v3.png?v=0.8.1', single: true }
+      ? { src: './father-exhausted-v3.png?v=0.8.2', single: true }
       : dadState.state === 'collapsed'
-        ? { src: './father-collapsed-v3.png?v=0.8.1', single: true }
-        : { src: './father-states-v2.png?v=0.8.1', single: false };
+        ? { src: './father-collapsed-v4.png?v=0.8.2', single: true }
+        : { src: './father-states-v2.png?v=0.8.2', single: false };
   const ending = endingFor(meaning, stats, endReason);
+  const hospitalEnding = endReason === 'energie' || endReason === 'ueberhitzt' || endReason === 'gesundheit';
   const lossNotice = crashReason ? lossNoticeFor(crashReason, stats) : null;
 
   const blip = useCallback((kind: 'good' | 'bad' | 'click' = 'click') => {
@@ -792,7 +793,7 @@ export default function Home() {
               <div><span>FAMILIENLAGE</span><b>{Math.round(stats.familie)}/100</b></div>
               <div><span>KONTO</span><b>{formatMoney(stats.geld)}</b></div>
             </div>
-            <p className="verdict">ERGIBT MEIN LEBEN SINN? <b>{meaning >= 55 ? 'JA. IRGENDWIE.' : 'NOCH NICHT.'}</b></p>
+            <p className="verdict">ERGIBT MEIN LEBEN SINN? <b>{hospitalEnding ? 'IST JETZT JA AUCH EGAL.' : meaning >= 55 ? 'JA. IRGENDWIE.' : 'NOCH NICHT.'}</b></p>
             <button className="start-button" onClick={resetGame}>NOCH EINE SCHICHT <span>↻</span></button>
           </section>
         )}

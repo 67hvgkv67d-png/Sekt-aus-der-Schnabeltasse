@@ -168,7 +168,7 @@ button:focus-visible { outline: 3px solid #fff4b8; outline-offset: 3px; }
 .dad-sprite img.dad-single { inset: 0; width: 100%; height: 100%; object-fit: contain; }
 .dad-sprite img.dad-sheet { width: 200%; height: 200%; object-fit: fill; }
 .dad-unwell .dad-sprite img.dad-sheet { left: 0; top: -100%; }
-.dad-collapsed .dad-sprite { aspect-ratio: 229 / 145; }
+.dad-collapsed .dad-sprite { aspect-ratio: 16 / 9; }
 .dad-state figcaption {
   position: absolute;
   left: 50%;
@@ -258,6 +258,17 @@ kbd { padding: 4px 7px; color: #f7d98d; background: #050b0a; border: 1px solid #
 .dot.warning { background: #ed6a4f; box-shadow: 0 0 8px #ed6a4f; }
 
 @media (min-width: 1061px) {
+  .hotspots {
+    position: absolute;
+    z-index: 9;
+    top: 0;
+    right: calc(clamp(300px, 15vw, 380px) + 52px);
+    bottom: 112px;
+    left: calc(clamp(300px, 15vw, 380px) + 52px);
+    pointer-events: none;
+  }
+  .hotspot { pointer-events: auto; }
+
   .game-shell { grid-template-rows: auto minmax(560px, 1fr) auto; }
   .topbar {
     min-height: clamp(92px, 7.2vh, 112px);
