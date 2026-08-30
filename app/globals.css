@@ -89,6 +89,13 @@ button:focus-visible { outline: 3px solid #fff4b8; outline-offset: 3px; }
 .meter-track i { display: block; height: 100%; min-width: 2px; background: linear-gradient(90deg, #438d69, #8ad69b); transition: width .35s ease; }
 .meter-track i.hot { background: linear-gradient(90deg, #ca692f, #ffcb55); }
 .meter-track i.dog { background: linear-gradient(90deg, #8c566a, #e9c06b); }
+.meter.warning .meter-label,
+.meter.warning .meter-label b { color: #ffcb55; }
+.meter.warning .meter-track { border-color: #d79b36; box-shadow: 0 0 0 1px #6d461f; }
+.meter.critical .meter-label,
+.meter.critical .meter-label b { color: #ff8a72; font-weight: 800; }
+.meter.critical .meter-track { border-color: #f05a49; box-shadow: 0 0 0 2px #6f211d; }
+.meter.critical .meter-track i { background: linear-gradient(90deg, #a92424, #ff654f); }
 .money-row { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 9px; border-top: 1px solid #456057; color: #95aea5; font-size: 8px; }
 .money-row b { color: #8ee0a6; font-size: 12px; }
 .money-row b.negative { color: #ff765d; }

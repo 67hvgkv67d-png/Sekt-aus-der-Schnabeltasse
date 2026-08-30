@@ -1,4 +1,4 @@
-const CACHE_NAME = 'schnabeltasse-v6';
+const CACHE_NAME = 'schnabeltasse-v7';
 const BASE_PATH = new URL('./', self.location.href).pathname;
 const CORE_ASSETS = [
   BASE_PATH,

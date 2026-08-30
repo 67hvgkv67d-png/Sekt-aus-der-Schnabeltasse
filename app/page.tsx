@@ -44,7 +44,7 @@ type InstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 };
 
-const VERSION = 'v0.8.0';
+const VERSION = 'v0.8.1';
 const SHIFT_SECONDS = 180;
 const ENERGY_REGEN_DELAY = 5000;
 const ENERGY_REGEN_PER_SECOND = 1.25;
@@ -271,7 +271,8 @@ function clamp(value: number, min = 0, max = 100) {
 function patchStats(stats: Stats, effects: Partial<Stats>): Stats {
   const next = { ...stats };
   (Object.keys(effects) as StatKey[]).forEach((key) => {
-    const value = next[key] + (effects[key] ?? 0);
+    const delta = effects[key] ?? 0;
+    const value = next[key] + (key === 'hitze' && delta > 0 ? delta * 1.12 : delta);
     if (key === 'geld') next[key] = value;
     else if (key === 'hund') next[key] = clamp(value, -100, 100);
     else next[key] = clamp(value);
@@ -299,13 +300,13 @@ function getDogRank(value: number) {
 }
 
 function getLifeRank(stats: Stats) {
-  if (stats.gesundheit <= 24 || stats.hitze >= 88) return 'KRANKENHAUS?';
-  if (stats.gesundheit <= 48 || stats.hitze >= 70) return 'BEOBACHTEN';
+  if (stats.gesundheit <= 24 || stats.energie <= 0 || stats.hitze >= 88) return 'KRANKENHAUS?';
+  if (stats.gesundheit <= 48 || stats.energie <= 18 || stats.hitze >= 70) return 'BEOBACHTEN';
   return 'AM LEBEN';
 }
 
 function getDadState(stats: Stats): { state: DadState; label: string } {
-  if (stats.gesundheit < 20 || stats.hitze >= 92) return { state: 'collapsed', label: 'PAPA: AM BODEN' };
+  if (stats.gesundheit < 20 || stats.energie <= 0 || stats.hitze >= 92) return { state: 'collapsed', label: 'PAPA: AM BODEN' };
   if (stats.gesundheit < 45 || stats.hitze >= 78) return { state: 'unwell', label: 'PAPA: ANGESCHLAGEN' };
   if (stats.energie < 28 || stats.familie < 25 || stats.haushalt < 20) return { state: 'exhausted', label: 'PAPA: ERSCHÖPFT' };
   return { state: 'stable', label: 'PAPA: STABIL' };
@@ -321,6 +322,8 @@ function formatTime(value: number) {
 }
 
 function endingFor(index: number, stats: Stats, reason: string) {
+  if (reason === 'energie') return { icon: '🏥', title: 'Verloren: Krankenhaus', text: 'Jakobs Energie ist vollständig aufgebraucht. Er ist zusammengebrochen und wird ins Krankenhaus gebracht.' };
+  if (reason === 'ueberhitzt') return { icon: '🌡️', title: 'Verloren: Überhitzt', text: `Hitze ${Math.round(stats.hitze)}/100: Jakobs Kreislauf macht Schluss. Die Schicht endet im Krankenhaus.` };
   if (reason === 'gesundheit') return { icon: '🏥', title: 'Verloren: Krankenhaus', text: `Jakob musste abbrechen: Gesundheit ${Math.round(stats.gesundheit)}/100, Hitze ${Math.round(stats.hitze)}/100. Gesundheit bei 0 oder Hitze bei 100 beendet die Schicht.` };
   if (reason === 'pleite') return { icon: '🧾', title: 'Verloren: Pleite', text: `Das Konto ist auf ${formatMoney(stats.geld)} gefallen. Unter −3.500 € ist die Familienbilanz nicht mehr zu retten.` };
   if (reason === 'sinn') return { icon: '🫥', title: 'Verloren: Kein Sinn', text: 'Der Sinn-Index war länger als 22 Sekunden im kritischen Bereich. Eine einzelne gute Aktion reicht dann nicht mehr.' };
@@ -331,11 +334,17 @@ function endingFor(index: number, stats: Stats, reason: string) {
 }
 
 function lossNoticeFor(reason: string, stats: Stats) {
+  if (reason === 'energie') return {
+    icon: '🏥', title: 'ENERGIE AUFGEBRAUCHT',
+    text: 'Energie 0/100. Jakob ist zusammengebrochen und wird ins Krankenhaus gebracht. Die Runde ist verloren.',
+  };
+  if (reason === 'ueberhitzt') return {
+    icon: '🌡️', title: 'ÜBERHITZT',
+    text: `Hitze ${Math.round(stats.hitze)}/100. Jakobs Kreislauf kollabiert – Krankenhaus. Die Runde ist verloren.`,
+  };
   if (reason === 'gesundheit') return {
     icon: '🏥', title: 'KRANKENHAUS',
-    text: stats.hitze >= 100
-      ? `Zu heiß: ${Math.round(stats.hitze)}/100. Die Runde ist verloren.`
-      : `Gesundheit auf ${Math.round(stats.gesundheit)}/100. Die Runde ist verloren.`,
+    text: `Gesundheit auf ${Math.round(stats.gesundheit)}/100. Jakob muss ins Krankenhaus. Die Runde ist verloren.`,
   };
   if (reason === 'pleite') return { icon: '🧾', title: 'FAMILIENKASSE LEER', text: `${formatMoney(stats.geld)} – die Runde ist verloren.` };
   return { icon: '🫥', title: 'SINN VERLOREN', text: 'Der Sinn-Index war zu lange kritisch. Die Runde ist verloren.' };
@@ -344,8 +353,13 @@ function lossNoticeFor(reason: string, stats: Stats) {
 function Meter({ label, value, tone = 'normal' }: { label: string; value: number; tone?: 'normal' | 'hot' | 'dog' }) {
   const display = tone === 'dog' ? (value + 100) / 2 : value;
   const meterClass = label.split(':')[0].toLowerCase();
+  const risk = tone === 'hot'
+    ? value >= 85 ? 'critical' : value >= 70 ? 'warning' : ''
+    : tone === 'dog'
+      ? value <= -25 ? 'critical' : value < 0 ? 'warning' : ''
+      : value <= 20 ? 'critical' : value <= 35 ? 'warning' : '';
   return (
-    <div className={`meter meter-${meterClass}`}>
+    <div className={`meter meter-${meterClass} ${risk}`}>
       <div className="meter-label"><span>{label}</span><b>{Math.round(value)}</b></div>
       <div className="meter-track"><i className={tone} style={{ width: `${clamp(display)}%` }} /></div>
     </div>
@@ -385,10 +399,10 @@ export default function Home() {
   const lifeRank = getLifeRank(stats);
   const dadState = getDadState(stats);
   const dadSprite = dadState.state === 'stable'
-    ? { src: './father-stable-v3.png?v=0.8.0', single: true }
+    ? { src: './father-stable-v3.png?v=0.8.1', single: true }
     : dadState.state === 'exhausted'
-      ? { src: './father-exhausted-v3.png?v=0.8.0', single: true }
-      : { src: './father-states-v2.png?v=0.8.0', single: false };
+      ? { src: './father-exhausted-v3.png?v=0.8.1', single: true }
+      : { src: './father-states-v2.png?v=0.8.1', single: false };
   const ending = endingFor(meaning, stats, endReason);
   const lossNotice = crashReason ? lossNoticeFor(crashReason, stats) : null;
 
@@ -538,7 +552,7 @@ export default function Home() {
           sinn: current.familie < 30 || current.geld < 0 ? -.34 : -.05,
           familie: current.haushalt < 28 ? -.23 : -.03,
           gesundheit: current.hitze > 72 ? -.75 : current.energie < 18 ? -.35 : .02,
-          hitze: -.12,
+          hitze: -.10,
           hund: -.07,
         });
         if (getMeaning(next) <= 20) setNegativeSeconds((value) => value + 1);
@@ -552,7 +566,9 @@ export default function Home() {
   useEffect(() => {
     if (phase !== 'playing' || crashReason) return;
     const reason = elapsed >= SHIFT_SECONDS ? 'zeit'
-      : stats.gesundheit <= 0 || stats.hitze >= 100 ? 'gesundheit'
+      : stats.energie <= 0 ? 'energie'
+        : stats.hitze >= 100 ? 'ueberhitzt'
+          : stats.gesundheit <= 0 ? 'gesundheit'
         : stats.geld <= -3500 ? 'pleite'
           : negativeSeconds >= 22 ? 'sinn' : null;
     if (!reason) return;
@@ -567,7 +583,7 @@ export default function Home() {
       blip('bad');
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [elapsed, stats.gesundheit, stats.hitze, stats.geld, negativeSeconds, phase, crashReason, finish, blip]);
+  }, [elapsed, stats.gesundheit, stats.energie, stats.hitze, stats.geld, negativeSeconds, phase, crashReason, finish, blip]);
 
   useEffect(() => {
     if (!crashReason) return;
@@ -817,8 +833,8 @@ export default function Home() {
             <ol>
               <li><b>Sinn über 0 halten.</b><span>Familie, Gesundheit, Hund, Geld und eigene Freude zählen gemeinsam.</span></li>
               <li><b>Drei Minuten durchhalten.</b><span>Jede Aktion hat Folgen und eine kurze Abklingzeit.</span></li>
-              <li><b>Energie einteilen.</b><span>Ohne genug Energie bleibt eine Aktion gesperrt. Nach fünf ruhigen Sekunden regeneriert sie automatisch.</span></li>
-              <li><b>Hitze ernst nehmen.</b><span>Zu viel Sport und Grillen ohne Pause kann im Krankenhaus enden.</span></li>
+              <li><b>Energie einteilen.</b><span>Bei Energie 0 bricht Jakob zusammen: Krankenhaus. Nach fünf ruhigen Sekunden regeneriert Energie automatisch.</span></li>
+              <li><b>Hitze ernst nehmen.</b><span>Bei Hitze 100 kollabiert der Kreislauf. Sport und Grillen heizen besonders schnell auf.</span></li>
               <li><b>Bedürfnisse statt Etiketten.</b><span>Paul braucht Rückzug, Theo Bewegung, Friedrich Nähe – alle drei bringen mehr als Fantasieumsatz.</span></li>
             </ol>
             <div className="key-help"><kbd>1–9</kbd> Aktionen <kbd>Leertaste</kbd> Pause</div>

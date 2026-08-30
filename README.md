@@ -8,7 +8,7 @@ Ein humorvolles Familien-Survival-Spiel im Stil klassischer Pixel-Art-Adventures
 
 Halte drei Minuten lang Sinn, Gesundheit, Familie, Geld, Haushalt und Fenjas Feini-Index zusammen. Kümmere dich um die unterschiedlichen Bedürfnisse der drei Kinder, geh mit Fenja raus, rette den Controller, grille mit Markus und verkrafte, dass der eigene Zwillingsbruder Professor ist.
 
-Aktuelle Spielversion: **v0.8.0**
+Aktuelle Spielversion: **v0.8.1**
 
 ## Spielen
 
@@ -17,8 +17,9 @@ Aktuelle Spielversion: **v0.8.0**
 - Mit der Leertaste pausierst du.
 - Zufällige Ereignisse unterbrechen die Schicht und verlangen Entscheidungen.
 - Zwischen den Entscheidungen sorgen kurze Haushaltsmeldungen für mehr Leben und etwas mehr Druck.
-- Nach fünf Sekunden Ruhe regeneriert Energie automatisch; ohne genug Energie bleiben Aktionen gesperrt.
-- Zu viel Hitze, zu wenig Gesundheit, Schulden oder ein dauerhaft niedriger Sinn-Index beenden die Runde vorzeitig.
+- Nach fünf Sekunden Ruhe regeneriert Energie automatisch; bei Energie 0 kollabiert Jakob und die Runde endet im Krankenhaus.
+- Überhitzung bei 100, Gesundheit bei 0, Schulden oder ein dauerhaft niedriger Sinn-Index beenden die Runde vorzeitig.
+- Kritische Zustandsbalken warnen deutlich in Gelb und Rot.
 
 Auf dem Handy lässt sich das Spiel über das Teilen-/Browsermenü zum Home-Bildschirm hinzufügen und anschließend wie eine Web-App starten.
 
