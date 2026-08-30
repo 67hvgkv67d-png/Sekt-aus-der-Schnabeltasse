@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type Phase = 'intro' | 'playing' | 'ended';
+type DadState = 'stable' | 'exhausted' | 'unwell' | 'collapsed';
 type StatKey = 'sinn' | 'gesundheit' | 'familie' | 'energie' | 'geld' | 'hund' | 'hitze' | 'haushalt';
 type Stats = Record<StatKey, number>;
 
@@ -37,7 +38,18 @@ type Action = {
   log: string;
 };
 
+type InstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+};
+
 const SHIFT_SECONDS = 180;
+const ENERGY_REGEN_DELAY = 5000;
+const ENERGY_REGEN_PER_SECOND = 1.25;
+const TRACKS = [
+  './audio/sekt-aus-der-schnabeltasse-1.mp3',
+  './audio/sekt-aus-der-schnabeltasse-2.mp3',
+];
 
 const INITIAL_STATS: Stats = {
   sinn: 54,
@@ -157,7 +169,7 @@ const EVENTS: GameEvent[] = [
   },
   {
     id: 'wife', icon: '📋', kicker: 'FAMILIEN-BILANZ', title: '1.000 Euro die Minute?',
-    text: 'Deine Frau hält Haushalt, Termine und alle unsichtbaren Fäden zusammen. Der satirische Kostenzähler läuft trotzdem.',
+    text: 'Deine Frau hält Haushalt, Termine und alle unsichtbaren Fäden zusammen. Der Kostenzähler läuft trotzdem.',
     choices: [
       { label: 'Dank sagen & Haushalt übernehmen', hint: '+Beziehung · +Ordnung · −Energie', effects: { familie: 16, haushalt: 14, energie: -12, sinn: 8 }, log: 'Unbezahlte Arbeit erkannt. Die Familienbilanz wird sofort weniger dämlich.' },
       { label: 'Nach einer Excel-Aufstellung fragen', hint: 'Sehr schlechte Idee', effects: { familie: -22, sinn: -9, haushalt: -8, energie: -4 }, log: 'Excel geöffnet. Beziehung geschlossen.' },
@@ -188,6 +200,10 @@ function patchStats(stats: Stats, effects: Partial<Stats>): Stats {
   return next;
 }
 
+function getEnergyRequirement(action: Action) {
+  return Math.max(3, -(action.effects.energie ?? 0));
+}
+
 function getMeaning(stats: Stats) {
   const moneyScore = clamp((stats.geld + 2000) / 100, 0, 100);
   const heatPenalty = Math.max(0, stats.hitze - 60) * 0.55;
@@ -207,6 +223,13 @@ function getLifeRank(stats: Stats) {
   if (stats.gesundheit <= 24 || stats.hitze >= 88) return 'KRANKENHAUS?';
   if (stats.gesundheit <= 48 || stats.hitze >= 70) return 'BEOBACHTEN';
   return 'AM LEBEN';
+}
+
+function getDadState(stats: Stats): { state: DadState; label: string } {
+  if (stats.gesundheit < 20 || stats.hitze >= 92) return { state: 'collapsed', label: 'PAPA: AM BODEN' };
+  if (stats.gesundheit < 45 || stats.hitze >= 78) return { state: 'unwell', label: 'PAPA: ANGESCHLAGEN' };
+  if (stats.energie < 28 || stats.familie < 25 || stats.haushalt < 20) return { state: 'exhausted', label: 'PAPA: ERSCHÖPFT' };
+  return { state: 'stable', label: 'PAPA: STABIL' };
 }
 
 function formatMoney(value: number) {
@@ -230,8 +253,9 @@ function endingFor(index: number, stats: Stats, reason: string) {
 
 function Meter({ label, value, tone = 'normal' }: { label: string; value: number; tone?: 'normal' | 'hot' | 'dog' }) {
   const display = tone === 'dog' ? (value + 100) / 2 : value;
+  const meterClass = label.split(':')[0].toLowerCase();
   return (
-    <div className="meter">
+    <div className={`meter meter-${meterClass}`}>
       <div className="meter-label"><span>{label}</span><b>{Math.round(value)}</b></div>
       <div className="meter-track"><i className={tone} style={{ width: `${clamp(display)}%` }} /></div>
     </div>
@@ -244,7 +268,11 @@ export default function Home() {
   const [elapsed, setElapsed] = useState(0);
   const [paused, setPaused] = useState(false);
   const [sound, setSound] = useState(true);
+  const [trackIndex, setTrackIndex] = useState(0);
+  const [recovering, setRecovering] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
+  const [installHelp, setInstallHelp] = useState(false);
+  const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
   const [activeEvent, setActiveEvent] = useState<GameEvent | null>(null);
   const [cooldowns, setCooldowns] = useState<Record<string, number>>({});
   const [logs, setLogs] = useState<string[]>(['Das Haus hält. Noch.']);
@@ -257,11 +285,14 @@ export default function Home() {
   const [highScore, setHighScore] = useState(0);
   const eventAt = useRef(12);
   const lastEvent = useRef('');
-  const audioRef = useRef<AudioContext | null>(null);
+  const lastActionAt = useRef(0);
+  const sfxRef = useRef<AudioContext | null>(null);
+  const musicRef = useRef<HTMLAudioElement | null>(null);
 
   const meaning = useMemo(() => getMeaning(stats), [stats]);
   const dogRank = getDogRank(stats.hund);
   const lifeRank = getLifeRank(stats);
+  const dadState = getDadState(stats);
   const ending = endingFor(meaning, stats, endReason);
 
   const blip = useCallback((kind: 'good' | 'bad' | 'click' = 'click') => {
@@ -269,8 +300,8 @@ export default function Home() {
     try {
       const AudioCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!AudioCtor) return;
-      const ctx = audioRef.current ?? new AudioCtor();
-      audioRef.current = ctx;
+      const ctx = sfxRef.current ?? new AudioCtor();
+      sfxRef.current = ctx;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = 'square';
@@ -283,11 +314,31 @@ export default function Home() {
     } catch { /* Sound is optional. */ }
   }, [sound]);
 
+  const toggleSound = useCallback(() => {
+    setSound((current) => {
+      const next = !current;
+      if (next && phase === 'playing' && !paused) void musicRef.current?.play().catch(() => undefined);
+      else musicRef.current?.pause();
+      return next;
+    });
+  }, [phase, paused]);
+
+  const installApp = useCallback(async () => {
+    if (!installPrompt) {
+      setInstallHelp(true);
+      return;
+    }
+    await installPrompt.prompt();
+    await installPrompt.userChoice;
+    setInstallPrompt(null);
+  }, [installPrompt]);
+
   const addLog = useCallback((message: string) => {
     setLogs((current) => [message, ...current].slice(0, 5));
   }, []);
 
   const finish = useCallback((reason = 'zeit') => {
+    musicRef.current?.pause();
     setEndReason(reason);
     setPhase('ended');
     setPaused(false);
@@ -307,12 +358,15 @@ export default function Home() {
     setBeers(0);
     setActionsDone({});
     setNegativeSeconds(0);
+    setRecovering(false);
     setEndReason('zeit');
     eventAt.current = 12;
     lastEvent.current = '';
+    lastActionAt.current = Date.now();
     setPhase('playing');
+    if (sound) void musicRef.current?.play().catch(() => undefined);
     blip('good');
-  }, [blip]);
+  }, [blip, sound]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -320,6 +374,26 @@ export default function Home() {
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if ('serviceWorker' in navigator) {
+      const base = window.location.pathname.endsWith('/') ? window.location.pathname : `${window.location.pathname}/`;
+      void navigator.serviceWorker.register(`${base}sw.js`).catch(() => undefined);
+    }
+
+    const onInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPrompt(event as InstallPromptEvent);
+    };
+    window.addEventListener('beforeinstallprompt', onInstallPrompt);
+    return () => window.removeEventListener('beforeinstallprompt', onInstallPrompt);
+  }, []);
+
+  useEffect(() => {
+    if (musicRef.current) musicRef.current.volume = .32;
+    if (phase === 'playing' && sound && !paused) void musicRef.current?.play().catch(() => undefined);
+    else musicRef.current?.pause();
+  }, [phase, sound, paused, trackIndex]);
 
   useEffect(() => {
     if (phase !== 'ended') return;
@@ -351,10 +425,12 @@ export default function Home() {
         Object.entries(current).map(([id, value]) => [id, Math.max(0, value - 1)])
       ));
 
+      const canRecover = Date.now() - lastActionAt.current >= ENERGY_REGEN_DELAY;
+      setRecovering(canRecover);
       setStats((current) => {
         const next = patchStats(current, {
           geld: -(1000 / 60) - (2100 / 60) - (180 / 60),
-          energie: -.18,
+          energie: canRecover ? ENERGY_REGEN_PER_SECOND : 0,
           haushalt: -.26,
           sinn: current.familie < 30 || current.geld < 0 ? -.34 : -.05,
           familie: current.haushalt < 28 ? -.23 : -.03,
@@ -383,6 +459,14 @@ export default function Home() {
 
   const doAction = useCallback((action: Action) => {
     if (phase !== 'playing' || paused || activeEvent || (cooldowns[action.id] ?? 0) > 0) return;
+    const energyCost = getEnergyRequirement(action);
+    if (stats.energie < energyCost) {
+      addLog(`Zu erschöpft für „${action.label}“. Kurz nichts tun: Nach 5 Sekunden kommt Energie zurück.`);
+      blip('bad');
+      return;
+    }
+    lastActionAt.current = Date.now();
+    setRecovering(false);
     if (action.id === 'konsole' && controllerBroken) {
       setStats((current) => patchStats(current, { geld: -320, sinn: -2 }));
       setControllerBroken(false);
@@ -405,9 +489,11 @@ export default function Home() {
     setActionsDone((current) => ({ ...current, [action.id]: (current[action.id] ?? 0) + 1 }));
     addLog(action.log);
     blip((effects.sinn ?? 0) >= 0 ? 'good' : 'bad');
-  }, [phase, paused, activeEvent, cooldowns, controllerBroken, stats.hitze, beers, addLog, blip]);
+  }, [phase, paused, activeEvent, cooldowns, controllerBroken, stats.hitze, stats.energie, beers, addLog, blip]);
 
   const chooseEvent = useCallback((choice: Choice) => {
+    lastActionAt.current = Date.now();
+    setRecovering(false);
     setStats((current) => patchStats(current, choice.effects));
     if (choice.revenue) setChildRevenue((value) => value + (choice.revenue ?? 0));
     if (choice.controllerBroken) setControllerBroken(true);
@@ -444,6 +530,12 @@ export default function Home() {
 
   return (
     <main className={`game-shell phase-${phase}`}>
+      <audio
+        ref={musicRef}
+        src={TRACKS[trackIndex]}
+        preload="metadata"
+        onEnded={() => setTrackIndex((current) => (current + 1) % TRACKS.length)}
+      />
       <header className="topbar">
         <div className="brand">
           <span className="eyebrow">FAMILIEN-SURVIVAL-SIMULATION</span>
@@ -460,26 +552,31 @@ export default function Home() {
         )}
 
         <nav className="controls" aria-label="Spielsteuerung">
-          <button onClick={() => setSound((value) => !value)} aria-label={sound ? 'Ton ausschalten' : 'Ton einschalten'}>{sound ? '♪' : '×♪'}</button>
+          <button onClick={toggleSound} aria-label={sound ? `Musik ${trackIndex + 1} ausschalten` : 'Musik einschalten'}>{sound ? `♪${trackIndex + 1}` : '×♪'}</button>
           {phase === 'playing' && <button onClick={() => setPaused((value) => !value)} aria-label={paused ? 'Fortsetzen' : 'Pause'}>{paused ? '▶' : 'Ⅱ'}</button>}
           <button onClick={() => setRulesOpen(true)} aria-label="Spielregeln">?</button>
         </nav>
       </header>
 
       <section className="stage" aria-label="Chaotisches Familienwohnzimmer">
-        <img className="scene-image" src="/family-home.png" alt="Pixel-Art-Wohnung einer chaotischen Familie" />
+        <img className="scene-image" src="./family-home-v2.png" alt="Pixel-Art-Wohnung einer chaotischen Familie" />
         <div className="scene-shade" />
 
         {phase === 'playing' && (
           <>
             <aside className="stats-panel pixel-panel" aria-label="Zustandswerte">
-              <div className="panel-heading"><span>LEBE ICH NOCH?</span><b className={`life-${lifeRank === 'AM LEBEN' ? 'good' : 'bad'}`}>{lifeRank}</b></div>
+              <div className="panel-heading">
+                <span>LEBE ICH NOCH?</span>
+                <b className={`life-${lifeRank === 'AM LEBEN' ? 'good' : 'bad'}`}>{lifeRank}</b>
+                <em className="mobile-goal-count">ZIELE {goals.filter((goal) => goal.done).length}/5</em>
+              </div>
               <Meter label="GESUNDHEIT" value={stats.gesundheit} />
               <Meter label="ENERGIE" value={stats.energie} />
               <Meter label="FAMILIE" value={stats.familie} />
               <Meter label="HAUSHALT" value={stats.haushalt} />
               <Meter label="HITZE" value={stats.hitze} tone="hot" />
               <Meter label={`FENJA: ${dogRank}`} value={stats.hund} tone="dog" />
+              <div className={`energy-recovery ${recovering ? 'active' : ''}`}>{recovering ? `ERHOLUNG +${ENERGY_REGEN_PER_SECOND}/S` : 'ERHOLUNG NACH 5 SEK. RUHE'}</div>
               <div className="money-row"><span>GELD</span><b className={stats.geld < 0 ? 'negative' : ''}>{formatMoney(stats.geld)}</b></div>
               <small>−1.000 €/Min Frau · −2.100 €/Min Kinder · −180 €/Min Hund</small>
             </aside>
@@ -490,25 +587,32 @@ export default function Home() {
               <div className="child-pnl">
                 <span>KINDER-PNL</span>
                 <b>−{(2100 - childRevenue).toLocaleString('de-DE')} €/MIN*</b>
-                <small>*emotional genaue Fantasiebuchhaltung</small>
+                <small>*Beiträge aus Jobs, Pfand und Geschenken</small>
               </div>
             </aside>
+
+            <figure className={`dad-state dad-${dadState.state}`} aria-label={dadState.label}>
+              <span className="dad-sprite"><img src="./father-states.png" alt="" /></span>
+              <figcaption>{dadState.label}</figcaption>
+            </figure>
 
             <div className="hotspots" aria-label="Aktionen in der Wohnung">
               {ACTIONS.map((action) => {
                 const cooldown = cooldowns[action.id] ?? 0;
                 const broken = action.id === 'konsole' && controllerBroken;
+                const energyCost = getEnergyRequirement(action);
+                const noEnergy = stats.energie < energyCost;
                 return (
                   <button
                     key={action.id}
-                    className={`hotspot ${action.position} ${cooldown > 0 ? 'cooling' : ''}`}
+                    className={`hotspot ${action.position} ${cooldown > 0 ? 'cooling' : ''} ${noEnergy ? 'no-energy' : ''}`}
                     onClick={() => doAction(action)}
-                    disabled={cooldown > 0 || paused}
-                    aria-label={`${action.label}: ${broken ? 'Controller ersetzen' : action.description}`}
+                    disabled={cooldown > 0 || paused || noEnergy}
+                    aria-label={`${action.label}: ${noEnergy ? `benötigt ${energyCost} Energie` : broken ? 'Controller ersetzen' : action.description}`}
                   >
                     <span className="hotspot-key">{action.key}</span>
                     <span className="hotspot-icon">{broken ? '🪛' : action.icon}</span>
-                    <span className="hotspot-copy"><b>{broken ? 'Controller ersetzen' : action.label}</b><small>{cooldown > 0 ? `${cooldown}s` : broken ? '−320 €' : action.description}</small></span>
+                    <span className="hotspot-copy"><b>{broken ? 'Controller ersetzen' : action.label}</b><small>{cooldown > 0 ? `${cooldown}s` : noEnergy ? `Energie fehlt (${energyCost})` : broken ? '−320 €' : action.description}</small></span>
                   </button>
                 );
               })}
@@ -526,12 +630,13 @@ export default function Home() {
             <span className="intro-kicker">EINE GANZ NORMALE FAMILIE. LEIDER.</span>
             <h1>Ergibt das hier<br /><em>Sinn?</em></h1>
             <p>
-              Drei Kinder. Ein junger Hund namens Fenja. Eine Frau, die laut Bilanz 1.000 Geld die Minute kostet
-              und praktisch das ganze System zusammenhält. Du bist Vater, Dr., Grillmeister – und
-              immer noch kein Professor.
+              Drei Kinder, ein Hund, Die Frau kostet 1.000 Geld pro Minute, ein Gravel Bike, ein Elektroauto,
+              Wallbox, Webergrill und immer noch kein Professor.
             </p>
             <button className="start-button" onClick={resetGame}>SCHICHT BEGINNEN <span>→</span></button>
             <button className="text-button" onClick={() => setRulesOpen(true)}>Wie überlebt man das?</button>
+            <button className="text-button install-button" onClick={installApp}>Als Web-App installieren</button>
+            {installHelp && <p className="install-help">iPhone/iPad: Teilen → „Zum Home-Bildschirm“. Android: Browsermenü → „App installieren“.</p>}
             <small>Beste Runde: {highScore || '—'} Sinn · keine flackernden Lichter · Tastatur & Touch</small>
           </section>
         )}
@@ -581,6 +686,7 @@ export default function Home() {
             <ol>
               <li><b>Sinn über 0 halten.</b><span>Familie, Gesundheit, Hund, Geld und eigene Freude zählen gemeinsam.</span></li>
               <li><b>Drei Minuten durchhalten.</b><span>Jede Aktion hat Folgen und eine kurze Abklingzeit.</span></li>
+              <li><b>Energie einteilen.</b><span>Ohne genug Energie bleibt eine Aktion gesperrt. Nach fünf ruhigen Sekunden regeneriert sie automatisch.</span></li>
               <li><b>Hitze ernst nehmen.</b><span>Zu viel Sport und Grillen ohne Pause kann im Krankenhaus enden.</span></li>
               <li><b>Bedürfnisse statt Etiketten.</b><span>Paul braucht Rückzug, Theo Bewegung, Friedrich Nähe – alle drei bringen mehr als Fantasieumsatz.</span></li>
             </ol>

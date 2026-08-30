@@ -8,6 +8,19 @@ export const metadata: Metadata = {
   metadataBase: new URL('https://sekt-aus-der-schnabeltasse.mahu350.chatgpt.site'),
   title,
   description,
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Schnabeltasse',
+  },
+  icons: {
+    icon: [
+      { url: '/app-icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/app-icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
   openGraph: {
     title,
     description,
@@ -21,6 +34,14 @@ export const metadata: Metadata = {
     description,
     images: ['/og.png'],
   },
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#10231f',
 };
 
 export default function RootLayout({
