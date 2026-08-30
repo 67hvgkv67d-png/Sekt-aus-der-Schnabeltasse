@@ -1,6 +1,6 @@
 'use client';
+/* eslint-disable @next/next/no-img-element */
 
-import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 type Phase = 'intro' | 'playing' | 'ended';
@@ -467,7 +467,7 @@ export default function Home() {
       </header>
 
       <section className="stage" aria-label="Chaotisches Familienwohnzimmer">
-        <Image className="scene-image" src="/family-home.png" alt="Pixel-Art-Wohnung einer chaotischen Familie" fill priority sizes="100vw" />
+        <img className="scene-image" src="/family-home.png" alt="Pixel-Art-Wohnung einer chaotischen Familie" />
         <div className="scene-shade" />
 
         {phase === 'playing' && (
