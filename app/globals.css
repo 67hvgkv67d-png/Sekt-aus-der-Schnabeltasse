@@ -468,7 +468,7 @@ kbd { padding: 4px 7px; color: #f7d98d; background: #050b0a; border: 1px solid #
   }
   .hotspot:hover:not(:disabled) { transform: none; }
   .hotspot-icon { grid-row: 1; width: 29px; height: 29px; font-size: 19px; }
-  .hotspot-copy { min-width: 0; padding: 0; white-space: normal; }
+  .hotspot-copy { display: block; min-width: 0; padding: 0; white-space: normal; }
   .hotspot-copy b { overflow: hidden; font-size: 7.5px; white-space: nowrap; text-overflow: ellipsis; }
   .hotspot-copy small { display: none; }
   .hotspot-key { left: -2px; top: -3px; width: 13px; height: 13px; font-size: 6px; }
@@ -557,9 +557,10 @@ kbd { padding: 4px 7px; color: #f7d98d; background: #050b0a; border: 1px solid #
   .hotspots { height: 111px; }
   .log-panel { bottom: 122px; height: 36px; }
   .dad-state { top: auto; bottom: 3%; width: clamp(132px, 42vw, 158px); }
-  .hotspot { grid-template-columns: 1fr; place-items: center; }
+  .hotspot { grid-template-columns: 32px minmax(0, 1fr); align-items: center; }
   .hotspot-icon { width: 34px; height: 30px; font-size: 21px; background: transparent; }
-  .hotspot-copy { display: none !important; }
+  .hotspot-copy { display: block !important; }
+  .hotspot-copy b { font-size: 6.5px; }
   .intro-panel { padding: 13px 14px; }
   .intro-panel h1 { font-size: 30px; }
   .intro-panel p { font-size: 7.5px; }
