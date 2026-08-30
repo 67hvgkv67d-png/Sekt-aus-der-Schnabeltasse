@@ -2,6 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { CSSProperties } from 'react';
 
 type Phase = 'intro' | 'playing' | 'ended';
 type DadState = 'stable' | 'exhausted' | 'unwell' | 'collapsed';
@@ -43,12 +44,26 @@ type InstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 };
 
+const VERSION = 'v0.6.0';
 const SHIFT_SECONDS = 180;
 const ENERGY_REGEN_DELAY = 5000;
 const ENERGY_REGEN_PER_SECOND = 1.25;
 const TRACKS = [
   './audio/sekt-aus-der-schnabeltasse-1.mp3',
   './audio/sekt-aus-der-schnabeltasse-2.mp3',
+];
+
+const AMBIENT_LOGS = [
+  'Lisa findet eine Tasse auf der Treppe. Niemand bekennt sich.',
+  'Fenja trägt eine Socke durchs Zimmer. Die Socke war offenbar wichtig.',
+  'Theo absolviert Runde 14 zwischen Sofa und Küche.',
+  'Paul schließt kurz die Tür. Rückzug ist auch Familienarbeit.',
+  'Friedrich fragt, ob heute schon Wochenende sein kann.',
+  'Der Wäschekorb steht jetzt strategisch woanders.',
+  'Jakob prüft den Professorentitel seines Bruders nicht. Fast nicht.',
+  'Vom Fernseher kommt das PlayStation-Startgeräusch. Fenja horcht auf.',
+  'Lisa löst nebenbei drei Probleme, die niemand bemerkt hatte.',
+  'Im Flur liegt ein einzelner Schuh. Sein Partner schweigt.',
 ];
 
 const INITIAL_STATS: Stats = {
@@ -136,8 +151,8 @@ const EVENTS: GameEvent[] = [
     ],
   },
   {
-    id: 'uncle', icon: '🌭', kicker: 'MARKUS IST ONLINE', title: 'Der Onkel hat Wurst',
-    text: 'Markus steht mit Creutz-Wurst vor der Tür und wäre später für eine Online-Runde zu haben.',
+    id: 'godfather', icon: '🌭', kicker: 'DER PATE IST DA', title: 'Der Pate hat Wurst',
+    text: 'Markus, Friedrichs Pate, steht mit Creutz-Wurst vor der Tür und wäre später für eine Online-Runde zu haben.',
     choices: [
       { label: 'Reinlassen & Grill an', hint: '+Sinn · +Familie · +Hitze', effects: { sinn: 16, familie: 12, hitze: 15, geld: -80 }, log: 'Markus grillt. Friedrich erhält ein Geschenk mit völlig unnötigen Batterien.' },
       { label: 'Heute nur online spielen', hint: '+Sinn · −Beziehung', effects: { sinn: 12, familie: -5, energie: 5, haushalt: -4 }, log: 'Digitaler Familienfreund. Die Wurst muss leider warten.' },
@@ -152,8 +167,8 @@ const EVENTS: GameEvent[] = [
     ],
   },
   {
-    id: 'gift', icon: '🎁', kicker: 'PATENONKEL-ÖKONOMIE', title: 'Ein Geschenk für Friedrich',
-    text: 'Der Patenonkel war nicht da, aber ein riesiges Spielzeugpaket schon. Es macht Geräusche und passt nirgendwo hin.',
+    id: 'gift', icon: '🎁', kicker: 'PATEN-ÖKONOMIE', title: 'Ein Geschenk für Friedrich',
+    text: 'Der Pate war nicht da, aber ein riesiges Spielzeugpaket schon. Es macht Geräusche und passt nirgendwo hin.',
     choices: [
       { label: 'Gemeinsam auspacken', hint: '+Familie · −Haushalt', effects: { familie: 12, sinn: 6, haushalt: -10 }, log: 'Friedrich strahlt. Der Karton wird zur Burg. Das Geschenk liegt daneben.' },
       { label: 'Als Familienumsatz verbuchen', hint: '+240 € · −Familie', effects: { geld: 240, familie: -7, sinn: -4 }, revenue: 240, log: 'Buchhalterisch profitabel. Emotional eher Quartalswarnung.' },
@@ -181,6 +196,70 @@ const EVENTS: GameEvent[] = [
     choices: [
       { label: 'Sichern, putzen, später länger raus', hint: '+Haushalt · +Feini · −Energie', effects: { haushalt: 11, hund: 5, energie: -9, sinn: -2 }, log: 'Katastrophe beseitigt. Niemand ist hineingetreten. Ein historischer Erfolg.' },
       { label: 'So tun, als wäre es nicht da', hint: '−Feini · −Haushalt · Mutig', effects: { hund: -18, haushalt: -17, familie: -8, sinn: -7 }, log: 'Es war weiterhin da. Jetzt nur mit größerem Radius.' },
+    ],
+  },
+  {
+    id: 'brother-house', icon: '🏡', kicker: 'ZWILLINGSBRUDER RUFT AN', title: 'Haus, Lehrstuhl, alles bestens',
+    text: 'Dein Bruder berichtet sehr beiläufig vom neuen Haus. Danach erwähnt er ebenso beiläufig, dass er Professor ist.',
+    choices: [
+      { label: 'Ehrlich gönnen und Thema wechseln', hint: '+Familie · +Gesundheit', effects: { familie: 7, gesundheit: 5, sinn: 3, energie: -3 }, log: 'Jakob gönnt. Danach redet er elf Minuten über seine Wallbox.' },
+      { label: 'Das eigene Gravel Bike erwähnen', hint: '+Sinn · −Energie', effects: { sinn: 8, energie: -5, familie: -2 }, log: 'Akademischer Titel gegen Reifendruck. Unentschieden.' },
+    ],
+  },
+  {
+    id: 'lisa-shopping', icon: '🛒', kicker: 'LISA WAR EINKAUFEN', title: 'Leider alles sinnvoll',
+    text: 'Lisa hat Schuhe, Brotdosen und einen neuen Staubsaugerfilter gekauft. Nichts davon macht Spaß. Alles davon war nötig.',
+    choices: [
+      { label: 'Bezahlen und ausdrücklich danken', hint: '−620 € · +Familie · +Haushalt', effects: { geld: -620, familie: 11, haushalt: 14, sinn: 3 }, log: 'Das Konto leidet. Der Haushalt funktioniert messbar besser.' },
+      { label: 'Nur nach dem Kassenbon fragen', hint: '−420 € · −Familie', effects: { geld: -420, familie: -12, haushalt: 8, sinn: -4 }, log: 'Der Kassenbon ist da. Die Stimmung ist gegangen.' },
+    ],
+  },
+  {
+    id: 'game-sale', icon: '🎮', kicker: 'ANGEBLICH 70 % GESPART', title: 'Jakob kauft PlayStation-Spiele',
+    text: 'Drei Spiele waren im Angebot. Jakob hat dadurch, rein mathematisch betrachtet, sehr viel Geld ausgegeben.',
+    choices: [
+      { label: 'Eins behalten, zwei erstatten', hint: '−90 € · +Sinn', effects: { geld: -90, sinn: 7, energie: 3 }, log: 'Ein Spiel bleibt. Verantwortung simuliert.' },
+      { label: 'Backlog ist auch Altersvorsorge', hint: '−240 € · ++Sinn · −Haushalt', effects: { geld: -240, sinn: 13, haushalt: -5, familie: -3 }, log: 'Bibliothek voll. Konto leerer. Jakob nennt das Infrastruktur.' },
+    ],
+  },
+  {
+    id: 'broken-tv', icon: '📺', kicker: 'FENJA-TECHNIKDIENST', title: 'Der Fernseher kippt',
+    text: 'Fenja jagt ein Ladekabel. Das Kabel gewinnt, der Fernseher verliert.',
+    choices: [
+      { label: 'Reparaturdienst und Kabel sichern', hint: '−980 € · +Feini · +Haushalt', effects: { geld: -980, hund: 5, haushalt: 8, sinn: -5 }, log: 'Fernseher gerettet. Kabelmanagement erstmals als Erziehungsziel erkannt.' },
+      { label: 'Vorerst ohne Fernseher leben', hint: '−Sinn · +Familie · +Geld', effects: { sinn: -11, familie: 8, haushalt: 4, geld: -80 }, log: 'Kein Bildschirm. Dafür reden plötzlich Menschen miteinander. Verdächtig.' },
+    ],
+  },
+  {
+    id: 'jogging', icon: '🏃‍♂️', kicker: 'JAKOB BRAUCHT LUFT', title: 'Eine Runde joggen?',
+    text: 'Draußen ist es kühl. Die Laufschuhe behaupten, Bewegung könne vernünftig dosiert sein.',
+    choices: [
+      { label: 'Lockere 25 Minuten', hint: '+Gesundheit · −Energie · −Hitze', effects: { gesundheit: 11, energie: -9, hitze: -8, sinn: 5 }, log: 'Jakob kommt langsamer, aber deutlich sortierter zurück.' },
+      { label: 'Bestzeit oder gar nicht', hint: '++Gesundheit · ++Hitze · Risiko', effects: { gesundheit: 5, energie: -15, hitze: 18, sinn: 7 }, log: 'Persönliche Bestzeit. Der Kreislauf verlangt Akteneinsicht.' },
+    ],
+  },
+  {
+    id: 'culture', icon: '🎭', kicker: 'KULTURPROGRAMM', title: 'Alle ins Kindertheater',
+    text: 'Lisa schlägt Kultur vor. Drei Kinder bewerten das Konzept gleichzeitig und sehr laut.',
+    choices: [
+      { label: 'Tickets buchen und los', hint: '−340 € · +Familie · +Sinn', effects: { geld: -340, familie: 13, sinn: 10, energie: -8 }, log: 'Das Stück war gut. Die Pause mit Brezel war besser. Alle haben etwas behalten.' },
+      { label: 'Kulturabend zu Hause', hint: '−80 € · +Familie · −Haushalt', effects: { geld: -80, familie: 8, sinn: 5, haushalt: -5 }, log: 'Sofakino mit selbstgemalten Eintrittskarten. Der Boden klebt kulturell.' },
+    ],
+  },
+  {
+    id: 'minigolf', icon: '⛳', kicker: 'FAMILIENAUSFLUG', title: 'Schwarzlicht-Minigolf',
+    text: 'Neonbahnen, drei Kinder, ein Schläger pro Person. Das klingt nur auf dem Flyer kontrolliert.',
+    choices: [
+      { label: 'Reizarme Zeit buchen und spielen', hint: '−290 € · ++Familie · +Sinn', effects: { geld: -290, familie: 16, sinn: 11, energie: -10 }, log: 'Paul bekommt Pausen, Theo darf zählen, Friedrich gewinnt irgendwie. Echter Familienmoment.' },
+      { label: 'Samstagnachmittag spontan hin', hint: '+Familie · ++Energieverlust', effects: { geld: -240, familie: 6, sinn: 4, energie: -15, gesundheit: -4 }, log: 'Schwarzlicht, Kindergeburtstag, Sirene. Danach brauchen alle einen stillen Raum.' },
+    ],
+  },
+  {
+    id: 'meltdown', icon: '🌪️', kicker: 'ALLE GLEICHZEITIG', title: 'Die Kinder rasten aus',
+    text: 'Paul will Ruhe, Theo Bewegung, Friedrich genau das Spielzeug, das Theo gerade hat. Lautstärke: Endgegner.',
+    choices: [
+      { label: 'Trennen, atmen, einzeln begleiten', hint: '++Familie · −−Energie', effects: { familie: 18, energie: -15, haushalt: -4, sinn: 6 }, log: 'Drei Bedürfnisse, drei Lösungen. Jakob ist danach nur noch zu 14 Prozent Mensch.' },
+      { label: 'Fernseher an und hoffen', hint: '+Energie · −Familie · −Haushalt', effects: { energie: 5, familie: -13, haushalt: -9, sinn: -5 }, log: 'Kurz leise. Später doppelt laut. Zeit lediglich umgeschichtet.' },
     ],
   },
 ];
@@ -242,13 +321,24 @@ function formatTime(value: number) {
 }
 
 function endingFor(index: number, stats: Stats, reason: string) {
-  if (reason === 'gesundheit') return { icon: '🏥', title: 'Nützt ja nichts.', text: 'Der Lebe-ich-noch-Index empfiehlt dringend ein Einzelzimmer. Privatpatient wäre jetzt praktisch.' };
-  if (reason === 'pleite') return { icon: '🧾', title: 'Familieninsolvenz mit Herz', text: 'Die emotionale Bilanz war vielleicht besser als die echte. Vielleicht.' };
-  if (reason === 'sinn') return { icon: '🫥', title: 'Existenzielle Kernschmelze', text: 'Der Sinn-Index war zu lange negativ. Markus schlägt Samstag grillen vor.' };
+  if (reason === 'gesundheit') return { icon: '🏥', title: 'Verloren: Krankenhaus', text: `Jakob musste abbrechen: Gesundheit ${Math.round(stats.gesundheit)}/100, Hitze ${Math.round(stats.hitze)}/100. Gesundheit bei 0 oder Hitze bei 100 beendet die Schicht.` };
+  if (reason === 'pleite') return { icon: '🧾', title: 'Verloren: Pleite', text: `Das Konto ist auf ${formatMoney(stats.geld)} gefallen. Unter −3.500 € ist die Familienbilanz nicht mehr zu retten.` };
+  if (reason === 'sinn') return { icon: '🫥', title: 'Verloren: Kein Sinn', text: 'Der Sinn-Index war länger als 22 Sekunden im kritischen Bereich. Eine einzelne gute Aktion reicht dann nicht mehr.' };
   if (index >= 78) return { icon: '🥂', title: 'Sekt aus der Schnabeltasse!', text: 'Es ergibt Sinn. Nicht logisch, nicht finanziell – aber auf die wichtige Art.' };
   if (index >= 58) return { icon: '🌭', title: 'Samstag grillen.', text: 'Das Leben ist chaotisch, der Hund verdächtig und die Wurst stabilisiert das System.' };
   if (index >= 38) return { icon: '🫠', title: 'Am Leben. Leider.', text: 'Kein Glanzabschluss, aber alle sind noch da. Das zählt hier bereits als Managementleistung.' };
   return { icon: '🥴', title: 'Everyone’s genervt.', text: 'Der Alltag hat die Bilanz gewonnen. Eine Online-Runde mit Markus wäre jetzt Infrastruktur.' };
+}
+
+function lossNoticeFor(reason: string, stats: Stats) {
+  if (reason === 'gesundheit') return {
+    icon: '🏥', title: 'KRANKENHAUS',
+    text: stats.hitze >= 100
+      ? `Zu heiß: ${Math.round(stats.hitze)}/100. Die Runde ist verloren.`
+      : `Gesundheit auf ${Math.round(stats.gesundheit)}/100. Die Runde ist verloren.`,
+  };
+  if (reason === 'pleite') return { icon: '🧾', title: 'FAMILIENKASSE LEER', text: `${formatMoney(stats.geld)} – die Runde ist verloren.` };
+  return { icon: '🫥', title: 'SINN VERLOREN', text: 'Der Sinn-Index war zu lange kritisch. Die Runde ist verloren.' };
 }
 
 function Meter({ label, value, tone = 'normal' }: { label: string; value: number; tone?: 'normal' | 'hot' | 'dog' }) {
@@ -282,8 +372,9 @@ export default function Home() {
   const [actionsDone, setActionsDone] = useState<Record<string, number>>({});
   const [negativeSeconds, setNegativeSeconds] = useState(0);
   const [endReason, setEndReason] = useState('zeit');
+  const [crashReason, setCrashReason] = useState<string | null>(null);
   const [highScore, setHighScore] = useState(0);
-  const eventAt = useRef(12);
+  const eventAt = useRef(9);
   const lastEvent = useRef('');
   const lastActionAt = useRef(0);
   const sfxRef = useRef<AudioContext | null>(null);
@@ -294,6 +385,7 @@ export default function Home() {
   const lifeRank = getLifeRank(stats);
   const dadState = getDadState(stats);
   const ending = endingFor(meaning, stats, endReason);
+  const lossNotice = crashReason ? lossNoticeFor(crashReason, stats) : null;
 
   const blip = useCallback((kind: 'good' | 'bad' | 'click' = 'click') => {
     if (!sound || typeof window === 'undefined') return;
@@ -343,6 +435,7 @@ export default function Home() {
     setPhase('ended');
     setPaused(false);
     setActiveEvent(null);
+    setCrashReason(null);
     blip(reason === 'zeit' ? 'good' : 'bad');
   }, [blip]);
 
@@ -360,7 +453,8 @@ export default function Home() {
     setNegativeSeconds(0);
     setRecovering(false);
     setEndReason('zeit');
-    eventAt.current = 12;
+    setCrashReason(null);
+    eventAt.current = 9;
     lastEvent.current = '';
     lastActionAt.current = Date.now();
     setPhase('playing');
@@ -410,11 +504,15 @@ export default function Home() {
     const timer = window.setInterval(() => {
       setElapsed((current) => {
         const next = current + 1;
+        if (next % 6 === 0) {
+          const message = AMBIENT_LOGS[Math.floor(Math.random() * AMBIENT_LOGS.length)];
+          setLogs((items) => [message, ...items].slice(0, 5));
+        }
         if (next >= eventAt.current) {
           const available = EVENTS.filter((event) => event.id !== lastEvent.current);
           const picked = available[Math.floor(Math.random() * available.length)];
           lastEvent.current = picked.id;
-          eventAt.current = next + 14 + Math.floor(Math.random() * 5);
+          eventAt.current = next + 11 + Math.floor(Math.random() * 4);
           setActiveEvent(picked);
           blip('bad');
         }
@@ -447,15 +545,30 @@ export default function Home() {
   }, [phase, paused, activeEvent, blip]);
 
   useEffect(() => {
-    if (phase !== 'playing') return;
+    if (phase !== 'playing' || crashReason) return;
     const reason = elapsed >= SHIFT_SECONDS ? 'zeit'
       : stats.gesundheit <= 0 || stats.hitze >= 100 ? 'gesundheit'
         : stats.geld <= -3500 ? 'pleite'
           : negativeSeconds >= 22 ? 'sinn' : null;
     if (!reason) return;
-    const timer = window.setTimeout(() => finish(reason), 0);
+    if (reason === 'zeit') {
+      const timer = window.setTimeout(() => finish(reason), 0);
+      return () => window.clearTimeout(timer);
+    }
+    const timer = window.setTimeout(() => {
+      setPaused(true);
+      setActiveEvent(null);
+      setCrashReason(reason);
+      blip('bad');
+    }, 0);
     return () => window.clearTimeout(timer);
-  }, [elapsed, stats.gesundheit, stats.hitze, stats.geld, negativeSeconds, phase, finish]);
+  }, [elapsed, stats.gesundheit, stats.hitze, stats.geld, negativeSeconds, phase, crashReason, finish, blip]);
+
+  useEffect(() => {
+    if (!crashReason) return;
+    const timer = window.setTimeout(() => finish(crashReason), 3600);
+    return () => window.clearTimeout(timer);
+  }, [crashReason, finish]);
 
   const doAction = useCallback((action: Action) => {
     if (phase !== 'playing' || paused || activeEvent || (cooldowns[action.id] ?? 0) > 0) return;
@@ -539,7 +652,7 @@ export default function Home() {
       <header className="topbar">
         <div className="brand">
           <span className="eyebrow">FAMILIEN-SURVIVAL-SIMULATION</span>
-          <strong>SEKT AUS DER SCHNABELTASSE</strong>
+          <div><strong>SEKT AUS DER SCHNABELTASSE</strong><small className="version-tag">{VERSION}</small></div>
         </div>
 
         {phase !== 'intro' && (
@@ -559,8 +672,16 @@ export default function Home() {
       </header>
 
       <section className="stage" aria-label="Chaotisches Familienwohnzimmer">
-        <img className="scene-image" src="./family-home-v2.png" alt="Pixel-Art-Wohnung einer chaotischen Familie" />
-        <div className="scene-shade" />
+        <div className="scene-window" style={{ '--scene-art': 'url("./family-home-v3.png")' } as CSSProperties}>
+          <img className="scene-image" src="./family-home-v3.png" alt="Vollständige Pixel-Art-Wohnung mit Lisa, drei Kindern und Fenja" />
+          <div className="scene-shade" />
+          {phase === 'playing' && (
+            <figure className={`dad-state dad-${dadState.state}`} aria-label={dadState.label}>
+              <span className="dad-sprite"><img src="./father-states.png?v=0.6.0" alt="" /></span>
+              <figcaption>{dadState.label}</figcaption>
+            </figure>
+          )}
+        </div>
 
         {phase === 'playing' && (
           <>
@@ -590,11 +711,6 @@ export default function Home() {
                 <small>*Beiträge aus Jobs, Pfand und Geschenken</small>
               </div>
             </aside>
-
-            <figure className={`dad-state dad-${dadState.state}`} aria-label={dadState.label}>
-              <span className="dad-sprite"><img src="./father-states.png" alt="" /></span>
-              <figcaption>{dadState.label}</figcaption>
-            </figure>
 
             <div className="hotspots" aria-label="Aktionen in der Wohnung">
               {ACTIONS.map((action) => {
@@ -644,7 +760,7 @@ export default function Home() {
         {phase === 'ended' && (
           <section className="ending-panel pixel-panel" role="dialog" aria-modal="true" aria-label="Spielergebnis">
             <span className="ending-icon">{ending.icon}</span>
-            <span className="intro-kicker">SCHICHT BEENDET · SINN-INDEX {meaning}</span>
+            <span className={`intro-kicker ${endReason !== 'zeit' ? 'loss-kicker' : ''}`}>{endReason === 'zeit' ? 'SCHICHT BEENDET' : 'RUNDE VERLOREN'} · SINN-INDEX {meaning}</span>
             <h1>{ending.title}</h1>
             <p>{ending.text}</p>
             <div className="ending-grid">
@@ -658,7 +774,17 @@ export default function Home() {
           </section>
         )}
 
-        {paused && phase === 'playing' && !activeEvent && (
+        {lossNotice && phase === 'playing' && (
+          <section className="crash-card pixel-panel" role="alert" aria-live="assertive">
+            <span className="crash-icon">{lossNotice.icon}</span>
+            <span className="intro-kicker loss-kicker">RUNDE VERLOREN</span>
+            <h2>{lossNotice.title}</h2>
+            <p>{lossNotice.text}</p>
+            <small>Auswertung folgt …</small>
+          </section>
+        )}
+
+        {paused && phase === 'playing' && !activeEvent && !crashReason && (
           <div className="pause-card" role="status"><b>PAUSE</b><span>Selbst der Sinn braucht kurz Luft.</span><button onClick={() => setPaused(false)}>WEITER</button></div>
         )}
 
