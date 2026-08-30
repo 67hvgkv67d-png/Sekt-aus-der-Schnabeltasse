@@ -45,7 +45,9 @@ type InstallPromptEvent = Event & {
 };
 
 const VERSION = 'v0.8.2';
-const SHIFT_SECONDS = 180;
+const DAY_SECONDS = 180;
+const DAY_START_MINUTES = 6 * 60;
+const DAY_END_MINUTES = 22 * 60 + 30;
 const ENERGY_REGEN_DELAY = 5000;
 const ENERGY_REGEN_PER_SECOND = 1.25;
 const TRACKS = [
@@ -316,15 +318,16 @@ function formatMoney(value: number) {
   return `${Math.round(value).toLocaleString('de-DE')} €`;
 }
 
-function formatTime(value: number) {
-  const remaining = Math.max(0, SHIFT_SECONDS - value);
-  return `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, '0')}`;
+function formatDayTime(value: number) {
+  const progress = clamp(value / DAY_SECONDS, 0, 1);
+  const minutes = Math.round(DAY_START_MINUTES + (DAY_END_MINUTES - DAY_START_MINUTES) * progress);
+  return `${String(Math.floor(minutes / 60)).padStart(2, '0')}:${String(minutes % 60).padStart(2, '0')}`;
 }
 
 function endingFor(index: number, stats: Stats, reason: string) {
   if (reason === 'energie') return { icon: '🏥', title: 'Verloren: Krankenhaus', text: 'Jakobs Energie ist vollständig aufgebraucht. Er ist zusammengebrochen und wird ins Krankenhaus gebracht.' };
-  if (reason === 'ueberhitzt') return { icon: '🌡️', title: 'Verloren: Überhitzt', text: `Hitze ${Math.round(stats.hitze)}/100: Jakobs Kreislauf macht Schluss. Die Schicht endet im Krankenhaus.` };
-  if (reason === 'gesundheit') return { icon: '🏥', title: 'Verloren: Krankenhaus', text: `Jakob musste abbrechen: Gesundheit ${Math.round(stats.gesundheit)}/100, Hitze ${Math.round(stats.hitze)}/100. Gesundheit bei 0 oder Hitze bei 100 beendet die Schicht.` };
+  if (reason === 'ueberhitzt') return { icon: '🌡️', title: 'Verloren: Überhitzt', text: `Hitze ${Math.round(stats.hitze)}/100: Jakobs Kreislauf macht Schluss. Der Tag endet im Krankenhaus.` };
+  if (reason === 'gesundheit') return { icon: '🏥', title: 'Verloren: Krankenhaus', text: `Jakob musste abbrechen: Gesundheit ${Math.round(stats.gesundheit)}/100, Hitze ${Math.round(stats.hitze)}/100. Gesundheit bei 0 oder Hitze bei 100 beendet den Tag.` };
   if (reason === 'pleite') return { icon: '🧾', title: 'Verloren: Pleite', text: `Das Konto ist auf ${formatMoney(stats.geld)} gefallen. Unter −3.500 € ist die Familienbilanz nicht mehr zu retten.` };
   if (reason === 'sinn') return { icon: '🫥', title: 'Verloren: Kein Sinn', text: 'Der Sinn-Index war länger als 22 Sekunden im kritischen Bereich. Eine einzelne gute Aktion reicht dann nicht mehr.' };
   if (index >= 78) return { icon: '🥂', title: 'Sekt aus der Schnabeltasse!', text: 'Es ergibt Sinn. Nicht logisch, nicht finanziell – aber auf die wichtige Art.' };
@@ -467,7 +470,7 @@ export default function Home() {
     setPaused(false);
     setActiveEvent(null);
     setCooldowns({});
-    setLogs(['07:00 Uhr. Niemand weiß, warum Fenja schon wach ist.']);
+    setLogs(['06:00 Uhr. Niemand weiß, warum Fenja schon wach ist.']);
     setChildRevenue(0);
     setControllerBroken(false);
     setBeers(0);
@@ -568,7 +571,7 @@ export default function Home() {
 
   useEffect(() => {
     if (phase !== 'playing' || crashReason) return;
-    const reason = elapsed >= SHIFT_SECONDS ? 'zeit'
+    const reason = elapsed >= DAY_SECONDS ? 'zeit'
       : stats.energie <= 0 ? 'energie'
         : stats.hitze >= 100 ? 'ueberhitzt'
           : stats.gesundheit <= 0 ? 'gesundheit'
@@ -675,7 +678,6 @@ export default function Home() {
       />
       <header className="topbar">
         <div className="brand">
-          <span className="eyebrow">FAMILIEN-SURVIVAL-SIMULATION</span>
           <div><strong>SEKT AUS DER SCHNABELTASSE</strong><small className="version-tag">{VERSION}</small></div>
         </div>
 
@@ -684,7 +686,7 @@ export default function Home() {
             <div className={`meaning-badge score-${meaning < 35 ? 'low' : meaning > 69 ? 'high' : 'mid'}`}>
               <span>SINN-INDEX</span><b>{meaning}</b>
             </div>
-            <div className="clock"><span>SCHICHTENDE</span><b>{formatTime(elapsed)}</b></div>
+            <div className="clock"><span>UHRZEIT</span><b>{formatDayTime(elapsed)}</b></div>
           </div>
         )}
 
@@ -773,7 +775,7 @@ export default function Home() {
               Drei Kinder, ein Hund, Die Frau kostet 1.000 Geld pro Minute, ein Gravel Bike, ein Elektroauto,
               Wallbox, Webergrill und immer noch kein Professor.
             </p>
-            <button className="start-button" onClick={resetGame}>SCHICHT BEGINNEN <span>→</span></button>
+            <button className="start-button" onClick={resetGame}>TAG BEGINNEN <span>→</span></button>
             <button className="text-button" onClick={() => setRulesOpen(true)}>Wie überlebt man das?</button>
             <button className="text-button install-button" onClick={installApp}>Als Web-App installieren</button>
             {installHelp && <p className="install-help">iPhone/iPad: Teilen → „Zum Home-Bildschirm“. Android: Browsermenü → „App installieren“.</p>}
@@ -784,7 +786,7 @@ export default function Home() {
         {phase === 'ended' && (
           <section className="ending-panel pixel-panel" role="dialog" aria-modal="true" aria-label="Spielergebnis">
             <span className="ending-icon">{ending.icon}</span>
-            <span className={`intro-kicker ${endReason !== 'zeit' ? 'loss-kicker' : ''}`}>{endReason === 'zeit' ? 'SCHICHT BEENDET' : 'RUNDE VERLOREN'} · SINN-INDEX {meaning}</span>
+            <span className={`intro-kicker ${endReason !== 'zeit' ? 'loss-kicker' : ''}`}>{endReason === 'zeit' ? 'TAG BEENDET' : 'RUNDE VERLOREN'} · SINN-INDEX {meaning}</span>
             <h1>{ending.title}</h1>
             <p>{ending.text}</p>
             <div className="ending-grid">
@@ -794,7 +796,7 @@ export default function Home() {
               <div><span>KONTO</span><b>{formatMoney(stats.geld)}</b></div>
             </div>
             <p className="verdict">ERGIBT MEIN LEBEN SINN? <b>{hospitalEnding ? 'IST JETZT JA AUCH EGAL.' : meaning >= 55 ? 'JA. IRGENDWIE.' : 'NOCH NICHT.'}</b></p>
-            <button className="start-button" onClick={resetGame}>NOCH EINE SCHICHT <span>↻</span></button>
+            <button className="start-button" onClick={resetGame}>NEUEN TAG BEGINNEN <span>↻</span></button>
           </section>
         )}
 

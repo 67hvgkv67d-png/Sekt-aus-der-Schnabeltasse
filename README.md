@@ -15,7 +15,7 @@ Aktuelle Spielversion: **v0.8.2**
 - Klicke oder tippe auf die neun Aktionen in der Wohnung.
 - Alternativ funktionieren die Tasten `1` bis `9`.
 - Mit der Leertaste pausierst du.
-- Zufällige Ereignisse unterbrechen die Schicht und verlangen Entscheidungen.
+- Ein Tag läuft in drei echten Minuten von 06:00 bis 22:30 Uhr; zufällige Ereignisse verlangen Entscheidungen.
 - Zwischen den Entscheidungen sorgen kurze Haushaltsmeldungen für mehr Leben und etwas mehr Druck.
 - Nach fünf Sekunden Ruhe regeneriert Energie automatisch; bei Energie 0 kollabiert Jakob und die Runde endet im Krankenhaus.
 - Überhitzung bei 100, Gesundheit bei 0, Schulden oder ein dauerhaft niedriger Sinn-Index beenden die Runde vorzeitig.
